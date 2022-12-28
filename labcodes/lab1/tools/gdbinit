@@ -1,9 +1,9 @@
 file obj/bootblock.o
 set architecture i8086
-target remote:1234
+target remote :1234
 b* 0x7c00
 
 define hook-stop
-x/i $pc
+x/i $eip
 end
 continue

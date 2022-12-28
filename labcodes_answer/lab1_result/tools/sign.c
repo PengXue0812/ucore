@@ -14,11 +14,11 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     printf("'%s' size: %lld bytes\n", argv[1], (long long)st.st_size);
-    if (st.st_size > 510) {
-        fprintf(stderr, "%lld >> 510!!\n", (long long)st.st_size);
+    if (st.st_size > 1022) {
+        fprintf(stderr, "%lld >> 1022!!\n", (long long)st.st_size);
         return -1;
     }
-    char buf[512];
+    char buf[1022];
     memset(buf, 0, sizeof(buf));
     FILE *ifp = fopen(argv[1], "rb");
     int size = fread(buf, 1, st.st_size, ifp);
@@ -30,13 +30,13 @@ int main(int argc, char *argv[]) {
     buf[510] = 0x55;
     buf[511] = 0xAA;
     FILE *ofp = fopen(argv[2], "wb+");
-    size = fwrite(buf, 1, 512, ofp);
-    if (size != 512) {
+    size = fwrite(buf, 1, 1022, ofp);
+    if (size != 1022) {
         fprintf(stderr, "write '%s' error, size is %d.\n", argv[2], size);
         return -1;
     }
     fclose(ofp);
-    printf("build 512 bytes boot sector: '%s' success!\n", argv[2]);
+    printf("build 1022 bytes boot sector: '%s' success!\n", argv[2]);
     return 0;
 }
 
