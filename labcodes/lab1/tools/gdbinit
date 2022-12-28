@@ -1,8 +1,9 @@
-file bin/kernel
-target remote :1234
+file obj/bootblock.o
 set architecture i8086
-b *0x7c00
+target remote:1234
+b* 0x7c00
+
+define hook-stop
+x/i $pc
+end
 continue
-x /2i $pc
-# break kern_init
-# continue

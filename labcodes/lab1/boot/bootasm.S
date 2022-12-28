@@ -27,11 +27,14 @@ start:
     #  address line 20 is tied low, so that addresses higher than
     #  1MB wrap around to zero by default. This code undoes this.
 
+# 启动 A20
 seta20.1:
     inb $0x64, %al                                  # Wait for not busy(8042 input buffer empty).
-    testb $0x2, %al                                 # 如果 %al 第低2位为1，则ZF = 0, 则跳转
-    jnz seta20.1                                    # 如果 %al 第低2位为0，则ZF = 1, 则不跳转
-
+    testb $0x2, %al                                 
+    jnz seta20.1                                    # 如果 %al 第2位（低位)为1，则循环
+    # 否则，8042输入缓冲区为空，可以继续执行
+    # 将值 0xd1 写入端口 0x64 
+    # 0xd1命令：向8042的p2端口写入数据
     movb $0xd1, %al                                 # 0xd1 -> port 0x64
     outb %al, $0x64                                 # 0xd1 means: write data to 8042's P2 port
 
@@ -40,24 +43,26 @@ seta20.2:
     testb $0x2, %al
     jnz seta20.2
 
+    # 将值 0xdf 写入端口 0x60
+    # 设置A20位位为1
     movb $0xdf, %al                                 # 0xdf -> port 0x60
     outb %al, $0x60                                 # 0xdf = 11011111, means set P2's A20 bit(the 1 bit) to 1
 
-    # 全局描述符表：存放8字节的段描述符，段描述符包含段的属性。
-    # 段选择符：总共16位，高13位用作全局描述符表中的索引位，GDT的第一项总是设为0，
-    #   因此孔断选择符的逻辑地址会被认为是无效的，从而引起一个处理器异常。GDT表项
-    #   最大数目是8191个，即2^13 - 1.
     # Switch from real to protected mode, using a bootstrap GDT
     # and segment translation that makes virtual addresses
     # identical to physical addresses, so that the
     # effective memory map does not change during the switch.
-    lgdt gdtdesc
+
+    lgdt gdtdesc # 载入GDT
+
+    # 将 CR0 的保护模式(PE)标志 设置为1
     movl %cr0, %eax
-    orl $CR0_PE_ON, %eax
+    orl $CR0_PE_ON, %eax # $CR0_PE_ON常数表示CR0寄存器的PE位
     movl %eax, %cr0
 
     # Jump to next instruction, but in 32-bit code segment.
     # Switches processor into 32-bit mode.
+    # 跳转到 32 位代码段的指令处，并将 CPU 进入32位模式
     ljmp $PROT_MODE_CSEG, $protcseg
 
 .code32                                             # Assemble for 32-bit mode
@@ -80,12 +85,14 @@ spin:
     jmp spin
 
 # Bootstrap GDT
-.p2align 2                                          # force 4 byte alignment
+# 初始化 GDT 表
+.p2align 2                                          # 强制将代码对齐到4字节边界
 gdt:
-    SEG_NULLASM                                     # null seg
-    SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)           # code seg for bootloader and kernel
-    SEG_ASM(STA_W, 0x0, 0xffffffff)                 # data seg for bootloader and kernel
+    SEG_NULLASM                                     # 空段
+    SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)           # 可执行代码段
+    SEG_ASM(STA_W, 0x0, 0xffffffff)                 # 可写数据段
 
+# gdtdesc变量，包含了GDT的大小和GDT的地址
 gdtdesc:
-    .word 0x17                                      # sizeof(gdt) - 1
+    .word 0x17                                      # sizeof(gdt) - 1  0x17表示3个描述符
     .long gdt                                       # address gdt

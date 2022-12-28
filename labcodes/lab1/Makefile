@@ -118,7 +118,6 @@ match = $(shell echo $(2) | $(AWK) '{for(i=1;i<=NF;i++){if(match("$(1)","^"$$(i)
 
 INCLUDE	+= libs/
 
-CFLAGS	+= $(addprefix -I,$(INCLUDE))
 
 LIBDIR	+= libs
 

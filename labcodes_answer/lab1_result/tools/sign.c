@@ -3,8 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-int
-main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     struct stat st;
     if (argc != 3) {
         fprintf(stderr, "Usage: <input filename> <output filename>\n");
