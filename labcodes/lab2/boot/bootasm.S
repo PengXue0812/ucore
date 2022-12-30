@@ -44,22 +44,22 @@ seta20.2:
     outb %al, $0x60                                 # 0xdf = 11011111, means set P2's A20 bit(the 1 bit) to 1
 
 probe_memory:
-    movl $0, 0x8000
-    xorl %ebx, %ebx
-    movw $0x8004, %di
+    movl $0, 0x8000     # 向0x8000处(即e820中的成员nr_map)写入0，用于计数
+    xorl %ebx, %ebx     # 初始化ebx为0
+    movw $0x8004, %di   # 初始化di为0x8004，即e820中的成员map的起始地址
 start_probe:
-    movl $0xE820, %eax
-    movl $20, %ecx
-    movl $SMAP, %edx
-    int $0x15
-    jnc cont
-    movw $12345, 0x8000
-    jmp finish_probe
+    movl $0xE820, %eax  # BIOS 0x15中断的功能号
+    movl $20, %ecx      # 存放地址范围描述符的大小
+    movl $SMAP, %edx    # 签名
+    int $0x15           # 调用 0x15中断
+    jnc cont            # 如果CF=0，说明调用成功，跳转到cont 
+    movw $12345, 0x8000 # 如果CF=1，说明调用失败，将nr_map中写入特殊信息12345
+    jmp finish_probe    # 跳转至finish_probe，结束探测
 cont:
-    addw $20, %di
-    incl 0x8000
-    cmpl $0, %ebx
-    jnz start_probe
+    addw $20, %di       # 如果中断执行成功，将di加20，指向下一个地址范围描述符
+    incl 0x8000         # nr_map加1
+    cmpl $0, %ebx       # 如果ebx为0，说明内存探测结束
+    jnz start_probe     # 如果ebx不为0，说明内存探测未结束，跳转至start_probe
 finish_probe:
 
     # Switch from real to protected mode, using a bootstrap GDT
