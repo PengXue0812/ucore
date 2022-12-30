@@ -148,23 +148,24 @@ struct trapframe switchk2u, *switchu2k;
 
 void TOU(struct trapframe * tf){
     if (trap_in_kernel(tf)) {
-        struct trapframe user_tf = *tf;
-        user_tf.tf_cs = USER_CS;
-        user_tf.tf_ds = user_tf.tf_es = user_tf.tf_ss = user_tf.tf_gs = user_tf.tf_fs = USER_DS;
-        user_tf.tf_eflags |= FL_IOPL_MASK | FL_IF;
-        user_tf.tf_esp = ((uintptr_t)tf) + sizeof(struct trapframe) - 2 * sizeof(uintptr_t);
-        *((uintptr_t*)tf - 1) = (uint32_t)&user_tf;
+        switchk2u = *tf;
+        switchk2u.tf_cs = USER_CS;
+        switchk2u.tf_ds = switchk2u.tf_es = switchk2u.tf_ss = USER_DS;
+        switchk2u.tf_esp = (uint32_t)tf + sizeof(struct trapframe) - 8;
+        switchk2u.tf_eflags |= FL_IOPL_MASK;
+        *((uint32_t *)tf - 1) = (uint32_t)&switchk2u;
     }
+
 }
 
 void TOK(struct trapframe *tf) {
     if (!trap_in_kernel(tf)) {
-        struct trapframe *kern_tf = (struct trapframe*)(tf->tf_esp - sizeof(struct trapframe) - 2 * sizeof(uintptr_t));
         tf->tf_cs = KERNEL_CS;
-        tf->tf_ds = tf->tf_es = tf->tf_ss = tf->tf_gs = tf->tf_fs = KERNEL_DS;
+        tf->tf_ds = tf->tf_es = KERNEL_DS;
         tf->tf_eflags &= ~FL_IOPL_MASK;
-        memmove(kern_tf, tf, sizeof(struct trapframe) - 2 * sizeof(uintptr_t));
-        *((uintptr_t*)tf - 1) = (uintptr_t)kern_tf;
+        switchu2k = (struct trapframe *)(tf->tf_esp - (sizeof(struct trapframe) - 8));
+        memmove(switchu2k, tf, sizeof(struct trapframe) - 8);
+        *((uint32_t *)tf - 1) = (uint32_t)switchu2k;
     }
 }
 
@@ -220,7 +221,7 @@ trap_dispatch(struct trapframe *tf) {
                 *((uint32_t *)tf - 1) = (uint32_t)&switchk2u;
             }
         }
-        
+        break;
     case T_SWITCH_TOU:
         TOU(tf);
         break;
