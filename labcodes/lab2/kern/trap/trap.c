@@ -152,6 +152,7 @@ void TOU(struct trapframe * tf){
         switchk2u.tf_eflags |= FL_IOPL_MASK;
         *((uint32_t *)tf - 1) = (uint32_t)&switchk2u;
     }
+
 }
 
 void TOK(struct trapframe *tf) {
@@ -178,7 +179,7 @@ trap_dispatch(struct trapframe *tf) {
          * (2) Every TICK_NUM cycle, you can print some info using a funciton, such as print_ticks().
          * (3) Too Simple? Yes, I think so!
          */
-          ticks ++;
+        ticks ++;
         if (ticks % TICK_NUM == 0) {
             print_ticks();
         }
@@ -190,8 +191,9 @@ trap_dispatch(struct trapframe *tf) {
     case IRQ_OFFSET + IRQ_KBD:
         c = cons_getc();
         cprintf("kbd [%03d] %c\n", c, c);
-          if(c == '0')
+        if(c == '0')
         {
+            cprintf("input 0, exit\n");
             if (tf->tf_cs != KERNEL_CS) {
                 cprintf("+++ switch to  kernel  mode +++\n");
                 tf->tf_cs = KERNEL_CS;
@@ -205,6 +207,7 @@ trap_dispatch(struct trapframe *tf) {
         // 输入字符为3，切换到用户态
         else if(c == '3')
         {
+            cprintf("input 3, exit\n");
             if (tf->tf_cs != USER_CS) {
                 cprintf("+++ switch to  user  mode +++\n");
                 switchk2u = *tf;

@@ -193,6 +193,7 @@ page_init(void) {
 
     cprintf("e820map:\n");
     int i;
+    // 找到最大的物理内存地址
     for (i = 0; i < memmap->nr_map; i ++) {
         uint64_t begin = memmap->map[i].addr, end = begin + memmap->map[i].size;
         cprintf("  memory: %08llx, [%08llx, %08llx], type = %d.\n",
@@ -203,21 +204,25 @@ page_init(void) {
             }
         }
     }
+    // 如果最大物理内存地址超过了内核的最大地址，就将其设置为内核的最大地址
     if (maxpa > KMEMSIZE) {
         maxpa = KMEMSIZE;
     }
 
     extern char end[];
-
+    // 计算所有的页的个数
     npage = maxpa / PGSIZE;
+
     pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);
 
+    // 保留所有的页
     for (i = 0; i < npage; i ++) {
         SetPageReserved(pages + i);
     }
 
-    uintptr_t freemem = PADDR((uintptr_t)pages + sizeof(struct Page) * npage);
 
+    uintptr_t freemem = PADDR((uintptr_t)pages + sizeof(struct Page) * npage);
+    // 初始化内存管理器
     for (i = 0; i < memmap->nr_map; i ++) {
         uint64_t begin = memmap->map[i].addr, end = begin + memmap->map[i].size;
         if (memmap->map[i].type == E820_ARM) {
@@ -429,15 +434,6 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
      * DEFINEs:
      *   PTE_P           0x001                   // page table/directory entry flags bit : Present
      */
-#if 0
-    if (0) {                      //(1) check if this page table entry is present
-        struct Page *page = NULL; //(2) find corresponding page to pte
-                                  //(3) decrease page reference
-                                  //(4) and free this page when page reference reachs 0
-                                  //(5) clear second page table entry
-                                  //(6) flush tlb
-    }
-#endif
     // 传入的pte有效
     if(*ptep & PTE_P){
         // 获得pte对应的page

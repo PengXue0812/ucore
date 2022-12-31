@@ -101,17 +101,14 @@ static struct Page *default_alloc_pages(size_t n) {
       break;
     }
   }
-  if (page != NULL) {
-    // remove this page from free_list
-    list_del(&(page->page_link));
-    // if the number of free pages is larger than n, then split the pages
-    if (page->property > n) {
-      struct Page *p = page + n;
+  if(page != NULL){
+    if(page -> property > n){
+      struct Page * p = page + n;
       p->property = page->property - n;
       SetPageProperty(p);
-      // add the new page to free_list
-      list_add_before(&free_list, &(p->page_link));
+      list_add_after(&(page->page_link), &(p->page_link));
     }
+    list_del(&(page->page_link));
     nr_free -= n;
     ClearPageProperty(page);
   }
