@@ -24,6 +24,7 @@ static int
 sys_wait(uint32_t arg[]) {
     int pid = (int)arg[0];
     int *store = (int *)arg[1];
+    cprintf("sys_wait: store=%d ", *store);
     return do_wait(pid, store);
 }
 

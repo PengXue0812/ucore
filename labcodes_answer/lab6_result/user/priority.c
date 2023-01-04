@@ -60,7 +60,8 @@ main(void) {
      cprintf("stride sched correct result:");
      for (i = 0; i < TOTAL; i ++)
      {
-         cprintf(" %d", (status[i] * 2 / status[0] + 1) / 2);
+          cprintf(" %d", status[i]);
+     //     cprintf(" %d", (status[i] * 2 / status[0] + 1) / 2);
      }
      cprintf("\n");
 
