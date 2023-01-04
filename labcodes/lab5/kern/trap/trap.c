@@ -56,6 +56,17 @@ idt_init(void) {
      /* LAB5 YOUR CODE */ 
      //you should update your lab1 code (just add ONE or TWO lines of code), let user app to use syscall to get the service of ucore
      //so you should setup the syscall interrupt gate in here
+    extern uintptr_t __vectors[];
+    int i;
+    for (i = 0; i < sizeof(idt) / sizeof(struct gatedesc); i ++) {
+        SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
+    }
+	// set for switch from user to kernel
+    SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);
+    // 设置中断T_SYSCALL的触发特权级
+    SETGATE(idt[T_SYSCALL], 1, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+	// load the IDT
+    lidt(&idt_pd);
 }
 
 static const char *
@@ -182,6 +193,9 @@ pgfault_handler(struct trapframe *tf) {
 static volatile int in_swap_tick_event = 0;
 extern struct mm_struct *check_mm_struct;
 
+/* temporary trapframe or pointer to trapframe */
+struct trapframe switchk2u, *switchu2k;
+
 static void
 trap_dispatch(struct trapframe *tf) {
     char c;
@@ -223,7 +237,12 @@ trap_dispatch(struct trapframe *tf) {
         /* you should upate you lab1 code (just add ONE or TWO lines of code):
          *    Every TICK_NUM cycle, you should set current process's current->need_resched = 1
          */
-  
+        ticks ++;
+        if (ticks % TICK_NUM == 0) {
+            assert(current != NULL);
+            current->need_resched = 1;
+            // print_ticks();
+        }
         break;
     case IRQ_OFFSET + IRQ_COM1:
         c = cons_getc();
@@ -232,6 +251,32 @@ trap_dispatch(struct trapframe *tf) {
     case IRQ_OFFSET + IRQ_KBD:
         c = cons_getc();
         cprintf("kbd [%03d] %c\n", c, c);
+        // 输入字符为0，切换到内核态
+        if(c == '0')
+        {
+            if (tf->tf_cs != KERNEL_CS) {
+                cprintf("+++ switch to  kernel  mode +++\n");
+                tf->tf_cs = KERNEL_CS;
+                tf->tf_ds = tf->tf_es = KERNEL_DS;
+                tf->tf_eflags &= ~FL_IOPL_MASK;
+                switchu2k = (struct trapframe *)(tf->tf_esp - (sizeof(struct trapframe) - 8));
+                memmove(switchu2k, tf, sizeof(struct trapframe) - 8);
+                *((uint32_t *)tf - 1) = (uint32_t)switchu2k;
+            }
+        }
+        // 输入字符为3，切换到用户态
+        else if(c == '3')
+        {
+            if (tf->tf_cs != USER_CS) {
+                cprintf("+++ switch to  user  mode +++\n");
+                switchk2u = *tf;
+                switchk2u.tf_cs = USER_CS;
+                switchk2u.tf_ds = switchk2u.tf_es = switchk2u.tf_ss = USER_DS;
+                switchk2u.tf_esp = (uint32_t)tf + sizeof(struct trapframe) - 8;
+                switchk2u.tf_eflags |= FL_IOPL_MASK;
+                *((uint32_t *)tf - 1) = (uint32_t)&switchk2u;
+            }
+        }
         break;
     //LAB1 CHALLENGE 1 : YOUR CODE you should modify below codes.
     case T_SWITCH_TOU:
